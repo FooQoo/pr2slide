@@ -1,71 +1,46 @@
-# pr2slide README
+# pr2slide
 
-This is the README for your extension "pr2slide". After writing up a brief description, we recommend including the following sections.
+pr2slide is a Visual Studio Code extension that helps you generate slide decks from GitHub pull requests using OpenAI's language models. It fetches pull request diffs and repository README files, then generates Markdown slides compatible with Marp.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- Browse and select pull requests from your GitHub repository.
+- Automatically fetch pull request diffs and repository README.
+- Generate slide decks in Markdown format using OpenAI.
+- Preview generated slides within VS Code using the Markdown preview.
+- Securely store your GitHub and OpenAI API tokens using VS Code's SecretStorage.
 
-For example if there is an image subfolder under your extension project workspace:
+## Setup
 
-\!\[feature X\]\(images/feature-x.png\)
+1. **Install the extension**  
+   Install pr2slide from the VS Code Marketplace or by loading it from source.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+2. **Configure API tokens**  
+   - Open the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac).
+   - Run `pr2slide.setGitHubToken` and enter your GitHub Personal Access Token.
+   - Run `pr2slide.setOpenAIApiKey` and enter your OpenAI API key.
+
+3. **Open a GitHub repository in VS Code**  
+   Make sure your workspace is opened on a folder linked to a GitHub repository.
+
+4. **Generate slides from a pull request**  
+   - Run the command `pr2slide.generateSlide`.
+   - Select a pull request from the list.
+   - Wait while the extension fetches data and generates slides.
+   - The generated slides will open in a Markdown editor with a preview pane.
+
+## Usage
+
+- Use the "Load more..." option to fetch additional pull requests if you have many.
+- The generated slides are Markdown files compatible with [Marp](https://marp.app/), allowing you to further edit and customize them.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- VS Code with Git and Marp extension enabled.
+- GitHub repository opened in your workspace.
+- Valid GitHub Personal Access Token with permissions to read pull requests.
+- Valid OpenAI API key.
 
-## Extension Settings
+## License
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+MIT License
