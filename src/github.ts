@@ -8,11 +8,11 @@ export interface PullRequest {
   author: string;
 }
 
-export async function getPullRequests(repo: string, token: string): Promise<PullRequest[]> {
+export async function getPullRequests(repo: string, token: string, page: number = 1, perPage: number = 30): Promise<PullRequest[]> {
   const config = vscode.workspace.getConfiguration('pr2slide');
   const githubBase = config.get<string>('githubApiBaseUrl') || 'https://api.github.com';
 
-  const response = await fetch(`${githubBase}/repos/${repo}/pulls?state=all`, {
+  const response = await fetch(`${githubBase}/repos/${repo}/pulls?state=all&page=${page}&per_page=${perPage}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/vnd.github+json',

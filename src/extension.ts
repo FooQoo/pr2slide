@@ -1,4 +1,9 @@
 import * as vscode from 'vscode';
+interface PRQuickPickItem {
+  label: string;
+  pr?: any;
+  loadMore?: boolean;
+}
 import { getPullRequests, getPullRequestDiff, getRepositoryReadme } from './github';
 import { generateMarpFromPR } from './openai';
 
@@ -18,38 +23,66 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const prs = await vscode.window.withProgress({
-      location: vscode.ProgressLocation.Window,
-      title: "Fetching Pull Requests",
-      cancellable: false
-    }, async (progress) => {
-      progress.report({ message: "Fetching pull requests..." });
-      return await getPullRequests(repo, token);
+    let prs: any[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    const quickPick = vscode.window.createQuickPick();
+    quickPick.placeholder = 'Select a pull request to generate slides';
+    quickPick.onDidChangeSelection(async (selection) => {
+      if (selection[0]) {
+        const selected = selection[0];
+        if ('loadMore' in selected && selected.loadMore) {
+          const lastActiveItem = quickPick.activeItems[0];
+          quickPick.busy = true;
+          page++;
+          await loadPRs();
+          quickPick.activeItems = [lastActiveItem];
+          quickPick.busy = false;
+        } else if ('pr' in selected) {
+          const pr = selected.pr as any;
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Window,
+            title: "Generating Slides",
+            cancellable: false
+          }, async (progress) => {
+            progress.report({ message: "Fetching pull request diff..." });
+            const diff = await getPullRequestDiff(repo, pr.number, token);
+            progress.report({ message: "Fetching repository README..." });
+            const readme = await getRepositoryReadme(repo, token);
+            progress.report({ message: "Generating slides..." });
+            const markdown = await generateMarpFromPR(pr, diff, readme, openaiToken);
+
+            const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: markdown });
+            await vscode.window.showTextDocument(doc);
+            await vscode.commands.executeCommand('markdown.showPreviewToSide');
+          });
+          quickPick.hide();
+        }
+      }
     });
-    const selected = await vscode.window.showQuickPick(
-      prs.map((pr) => ({ label: `#${pr.number}: ${pr.title}`, pr })),
-      { placeHolder: 'Select a pull request to generate slides' }
-    );
-    if (!selected) {return;}
 
-    const pr = selected.pr;
+    const loadPRs = async () => {
+      const fetchedPrs = await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Window,
+        title: "Fetching Pull Requests",
+        cancellable: false
+      }, async (progress) => {
+        progress.report({ message: "Fetching pull requests..." });
+        return await getPullRequests(repo, token, page);
+      });
 
-    await vscode.window.withProgress({
-      location: vscode.ProgressLocation.Window,
-      title: "Generating Slides",
-      cancellable: false
-    }, async (progress) => {
-      progress.report({ message: "Fetching pull request diff..." });
-      const diff = await getPullRequestDiff(repo, pr.number, token);
-      progress.report({ message: "Fetching repository README..." });
-      const readme = await getRepositoryReadme(repo, token);
-      progress.report({ message: "Generating slides..." });
-      const markdown = await generateMarpFromPR(pr, diff, readme, openaiToken);
+      prs = prs.concat(fetchedPrs);
+      hasMore = fetchedPrs.length > 0;
 
-      const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: markdown });
-      await vscode.window.showTextDocument(doc);
-      await vscode.commands.executeCommand('markdown.showPreviewToSide');
-    });
+      quickPick.items = [
+        ...prs.map((pr) => ({ label: `#${pr.number}: ${pr.title}`, pr } as PRQuickPickItem)),
+        ...(hasMore ? [{ label: 'Load more...', loadMore: true } as PRQuickPickItem] : [])
+      ];
+    };
+
+    await loadPRs();
+    quickPick.show();
   });
 
   const setGithubTokenCommand = vscode.commands.registerCommand('pr2slide.setGitHubToken', async () => {
@@ -76,18 +109,17 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-
   context.subscriptions.push(generateCommand, setGithubTokenCommand, setOpenaiTokenCommand);
 }
 
 async function detectRepo(): Promise<string | undefined> {
   const folders = vscode.workspace.workspaceFolders;
-  if (!folders || folders.length === 0) {return undefined;}
+  if (!folders || folders.length === 0) { return undefined; }
   const uri = folders[0].uri;
   const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
   const api = gitExtension?.getAPI(1);
   const repo = api?.repositories?.[0]?.state?.remotes?.[0]?.fetchUrl;
-  if (!repo) {return undefined;}
+  if (!repo) { return undefined; }
   const match = repo.match(/github.com[/:](.+?)\.(git)?$/);
   return match?.[1];
 }
