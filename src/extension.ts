@@ -75,8 +75,11 @@ export function activate(context: vscode.ExtensionContext) {
       prs = prs.concat(fetchedPrs);
       hasMore = fetchedPrs.length > 0;
 
+      const newItems = fetchedPrs.map((pr) => ({ label: `#${pr.number}: ${pr.title}`, pr } as PRQuickPickItem));
+      const currentItems = (quickPick.items as PRQuickPickItem[]).filter(item => !item.loadMore);
       quickPick.items = [
-        ...prs.map((pr) => ({ label: `#${pr.number}: ${pr.title}`, pr } as PRQuickPickItem)),
+        ...currentItems,
+        ...newItems,
         ...(hasMore ? [{ label: 'Load more...', loadMore: true } as PRQuickPickItem] : [])
       ];
     };
