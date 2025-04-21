@@ -9,15 +9,41 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "extensionDependencies": [
+    "marp-team.marp-vscode",
+    "GitHub.vscode-pull-request-github"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "pr2slide.helloWorld",
-        "title": "Hello World"
+        "command": "pr2slide.generateSlide",
+        "title": "PR to Slide: Generate Slide from PR"
+      },
+      {
+        "command": "pr2slide.setOpenAIApiKey",
+        "title": "PR to Slide: Set OpenAI API Key"
+      },
+      {
+        "command": "pr2slide.setGitHubToken",
+        "title": "PR to Slide: Set GitHub Token"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "pr2slide",
+      "properties": {
+        "pr2slide.openaiBaseUrl": {
+          "type": "string",
+          "default": "https://api.openai.com",
+          "description": "Custom base URL for OpenAI API (e.g., for Azure OpenAI)"
+        },
+        "pr2slide.githubApiBaseUrl": {
+          "type": "string",
+          "default": "https://api.github.com",
+          "description": "Custom base URL for GitHub API (e.g., for GitHub Enterprise)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -34,16 +60,20 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.99.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/node-fetch": "^2.6.12",
+    "@types/vscode": "^1.99.0",
     "@typescript-eslint/eslint-plugin": "^8.28.0",
     "@typescript-eslint/parser": "^8.28.0",
-    "eslint": "^9.23.0",
-    "esbuild": "^0.25.1",
-    "npm-run-all": "^4.1.5",
-    "typescript": "^5.8.2",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.25.1",
+    "eslint": "^9.23.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
   }
 }
