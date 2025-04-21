@@ -30,7 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
       prs.map((pr) => ({ label: `#${pr.number}: ${pr.title}`, pr })),
       { placeHolder: 'Select a pull request to generate slides' }
     );
-    if (!selected) return;
+    if (!selected) {return;}
 
     const pr = selected.pr;
 
@@ -82,12 +82,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 async function detectRepo(): Promise<string | undefined> {
   const folders = vscode.workspace.workspaceFolders;
-  if (!folders || folders.length === 0) return undefined;
+  if (!folders || folders.length === 0) {return undefined;}
   const uri = folders[0].uri;
   const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
   const api = gitExtension?.getAPI(1);
   const repo = api?.repositories?.[0]?.state?.remotes?.[0]?.fetchUrl;
-  if (!repo) return undefined;
+  if (!repo) {return undefined;}
   const match = repo.match(/github.com[/:](.+?)\.(git)?$/);
   return match?.[1];
 }
