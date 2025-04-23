@@ -7,7 +7,13 @@ export async function generateMarpFromPR(
   readme: string,
   token: string,
   model: string = 'gpt-4o',
-  meta?: { state?: string; merged?: boolean; comments?: any[] }
+  meta?: {
+    state?: string;
+    merged?: boolean;
+    comments?: any[];
+    createdAt?: string;
+    commits?: { author: string; date: string; message: string }[];
+  }
 ): Promise<string> {
   const prompt = `
 You are a helpful assistant that generates Marp-format Markdown slide decks.
@@ -40,6 +46,34 @@ ${meta.comments
   : ''
 }
 
+${meta?.commits?.length
+  ? `## Recent Commits
+${meta.commits
+  .slice(0, 3)
+  .map((c: any) => `- ${c.author} (${c.date}): ${c.message.split('\n')[0]}`)
+  .join('\n')}
+`
+  : ''
+}
+
+### Please generate a Marp slide deck in Markdown format.
+
+- Use headings for each slide (e.g., \`#\`, \`##\`)
+- Use slide breaks (\`---\`) between slides (**except after the final slide**)
+- Write all slide content in **Japanese**
+- Output the entire result as raw Markdown text.
+- Do not wrap the entire output in triple backticks or any code block.
+- Each slide should be plain Markdown separated by \`---\`, without any outer formatting.
+
+---
+
+### Slide Structure and Rules
+
+#### 1. Title Slide
+- Include: Repository name (linked), PR title (linked), author name, and creation date.
+
+Example:
+\`\`\`markdown
 ---
 marp: true
 theme: default
@@ -53,28 +87,15 @@ style: |
   }
 ---
 
-### Please generate a Marp slide deck in Markdown format.
-
-- Use headings for each slide (e.g., \`#\`, \`##\`)
-- Use slide breaks (\`---\`) between slides (**except after the final slide**)
-- Write all slide content in **Japanese**
-- Output slides directly as Markdown (do **not** wrap the entire output in a code block)
-
----
-
-### Slide Structure and Rules
-
-#### 1. Title Slide
-- Include: Repository name (linked), PR title (linked), author name, and creation date.
-
-Example:
-\`\`\`markdown
 # PR: Add percentile configuration to Locust
 
 Repository: [org/repository](url)  
 Author: Someone
-Date: YYYY-MM-DD
+Date: ${meta?.createdAt ?? 'YYYY-MM-DD'}
 \`\`\`
+
+YYYY-MM-DD is the date of the creation of the PR.
+Marp header must be described in the first slide.
 
 ---
 
@@ -151,7 +172,7 @@ Example:
 
 ---
 
-#### 7. Review Feedback and Author Responses (**Only if PR is merged**)
+#### 7. Review Feedback and Author Responses (**Only show if PR is merged**)
 - One slide per reviewer
 - Highlight notable praise, especially if given after a revision
 - Summarize key review points
@@ -175,15 +196,17 @@ Example:
 \`\`\`markdown
 ## Timeline So Far
 
-- YYYY-MM-20: PR created  
-- YYYY-MM-21: Initial review  
-- YYYY-MM-22: Refactor completed  
-- YYYY-MM-23: Approval pending
+- YYYY-MM-DD: PR created  
+- YYYY-MM-DD: Initial review  
+- YYYY-MM-DD: Refactor completed  
+- YYYY-MM-DD: Approval pending
 \`\`\`
+
+YYYY-MM-DD is the date of the last commit in the PR.
 
 ---
 
-#### 9. Summary: Achievements (**Only if PR is merged**)
+#### 9. Summary: Achievements (**Only show if PR is merged**)
 - Recap improvements made and impact on the product or team.
 
 Example:
@@ -195,14 +218,14 @@ Example:
 
 ---
 
-#### 10. Summary: Future Outlook (**Only if PR is merged**)
-- Summarize proposed follow-ups, TODOs, or refactoring ideas.
+#### 10. Conclusion
+- Wrap up the presentation.
 
 Example:
 \`\`\`markdown
-## Summary: Future Outlook
+## Conclusion
+- describe the conclusion in detail
 
-- describe the future outlook
 \`\`\`
 
 `.trim();

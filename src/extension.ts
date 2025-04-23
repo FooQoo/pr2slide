@@ -45,11 +45,11 @@ async function generateSlideFrom(pr: any, context: vscode.ExtensionContext) {
     cancellable: false
   }, async (progress) => {
     progress.report({ message: "Fetching pull request details..." });
-    const { diff, state, merged, comments } = await getPullRequestDetails(repo, pr.number, token);
+    const { diff, state, merged, comments, createdAt, commits } = await getPullRequestDetails(repo, pr.number, token);
     progress.report({ message: "Fetching repository README..." });
     const readme = await getRepositoryReadme(repo, token);
     progress.report({ message: "Generating slides..." });
-    const markdown = await generateMarpFromPR(pr, diff, readme, openaiToken, 'gpt-4o', { state, merged, comments });
+    const markdown = await generateMarpFromPR(pr, diff, readme, openaiToken, 'gpt-4o', { state, merged, comments, createdAt, commits });
 
     const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: markdown });
     await vscode.window.showTextDocument(doc);
@@ -158,29 +158,30 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 async function detectRepo(): Promise<string | undefined> {
-  const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
-  const api = gitExtension?.getAPI(1);
-  const repo = api?.repositories?.[0];
-
-  if (!repo) {
-    vscode.window.showErrorMessage('No Git repository found.');
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) {
+    vscode.window.showWarningMessage('No workspace folder is open.');
     return undefined;
   }
 
-  const url = repo.state.remotes[0]?.fetchUrl;
-  if (!url) {
-    vscode.window.showErrorMessage('No remote URL found.');
-    return undefined;
-  }
+  const gitExtension = vscode.extensions.getExtension('vscode.git');
+  await gitExtension?.activate();
 
-  const cleaned = url.replace(/\.git$/, '');
-  const parts = cleaned.split(/[:/]/);
-  const owner = parts[parts.length - 2];
-  const name = parts[parts.length - 1];
-  if (owner && name) {
-    return `${owner}/${name}`;
-  }
+  const api = gitExtension?.exports?.getAPI(1);
+  const repositories = api?.repositories ?? [];
 
+  const pattern = /[:\/]([^\/:]+\/[^\/]+?)(?:\.git)?$/;
+
+  for (const repo of repositories) {
+    for (const remote of repo.state.remotes) {
+      const url = remote.fetchUrl || remote.pushUrl;
+      if (!url) {continue;}
+
+      const match = url.match(pattern);
+      if (match?.[1]) {return match[1];}
+    }
+  }
+  
   return undefined;
 }
 
@@ -198,13 +199,20 @@ class PRListProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     return element;
   }
 
-  async getChildren(): Promise<vscode.TreeItem[]> {
+  async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
+    if (!element) {
+      return [
+        new vscode.TreeItem('Open Pull Requests', vscode.TreeItemCollapsibleState.Collapsed),
+        new vscode.TreeItem('Closed Pull Requests', vscode.TreeItemCollapsibleState.Collapsed),
+      ];
+    }
+
+    const state = element.label === 'Open Pull Requests' ? 'open' : 'closed';
+
     const gitExtension = vscode.extensions.getExtension('vscode.git');
     await gitExtension?.activate();
 
-    if (!this.context) {
-      return [];
-    }
+    if (!this.context) return [];
 
     let token = await getSecret(this.context, 'pr2slide.githubToken');
     if (!token) {
@@ -229,7 +237,12 @@ class PRListProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
       return [];
     }
 
-    const prs = await getPullRequests(repo, token, 1);
+    const prs = await getPullRequests(repo, token, 1, state);
+
+    if (prs.length === 0) {
+      vscode.window.showInformationMessage(`No ${state} pull requests found.`);
+      return [];
+    }
 
     return prs.map((pr: any) => {
       const item = new vscode.TreeItem(`#${pr.number}: ${pr.title}`, vscode.TreeItemCollapsibleState.None);
