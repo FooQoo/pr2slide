@@ -14,6 +14,11 @@
     "GitHub.vscode-pull-request-github"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:pr2slide.generateSlide",
+    "onCommand:pr2slide.setOpenAIApiKey",
+    "onCommand:pr2slide.setGitHubToken"
+  ],
   "contributes": {
     "commands": [
       {
@@ -75,5 +80,11 @@
   },
   "dependencies": {
     "node-fetch": "^2.7.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FooQoo/pr2slide"
+  },
+  "publisher": "FooQoo",
+  "icon": "images/icon.png"
 }
