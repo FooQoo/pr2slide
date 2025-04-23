@@ -67,3 +67,56 @@ export async function getRepositoryReadme(repo: string, token: string): Promise<
 
   return await response.text();
 }
+
+
+export async function getPullRequestDetails(
+  repo: string,
+  prNumber: number,
+  token: string
+): Promise<{
+  diff: string;
+  state: string;
+  merged: boolean;
+  comments: any[];
+}> {
+  const config = vscode.workspace.getConfiguration('pr2slide');
+  const githubBase = config.get<string>('githubApiBaseUrl') || 'https://api.github.com';
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+  };
+
+  // Fetch PR metadata
+  const prResponse = await fetch(`${githubBase}/repos/${repo}/pulls/${prNumber}`, { headers });
+  if (!prResponse.ok) {
+    throw new Error(`GitHub API error (PR metadata): ${prResponse.status} ${prResponse.statusText}`);
+  }
+  const prData = await prResponse.json();
+
+  // Fetch PR diff
+  const diffResponse = await fetch(`${githubBase}/repos/${repo}/pulls/${prNumber}`, {
+    headers: {
+      ...headers,
+      'Accept': 'application/vnd.github.v3.diff',
+    },
+  });
+  if (!diffResponse.ok) {
+    throw new Error(`GitHub API error (diff): ${diffResponse.status} ${diffResponse.statusText}`);
+  }
+  const diff = await diffResponse.text();
+
+  // Fetch review comments
+  const commentsResponse = await fetch(`${githubBase}/repos/${repo}/pulls/${prNumber}/comments`, { headers });
+  if (!commentsResponse.ok) {
+    throw new Error(`GitHub API error (comments): ${commentsResponse.status} ${commentsResponse.statusText}`);
+  }
+  const comments = await commentsResponse.json();
+
+  return {
+    diff,
+    state: prData.state,
+    merged: prData.merged,
+    comments,
+  };
+}

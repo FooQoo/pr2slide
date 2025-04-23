@@ -6,7 +6,8 @@ export async function generateMarpFromPR(
   diff: string,
   readme: string,
   token: string,
-  model: string = 'gpt-4o'
+  model: string = 'gpt-4o',
+  meta?: { state?: string; merged?: boolean; comments?: any[] }
 ): Promise<string> {
   const prompt = `
 You are a helpful assistant that generates Marp-format Markdown slide decks.
@@ -16,34 +17,194 @@ The slides should explain the pull request below in a way that helps others unde
 ${readme}
 
 ## Pull Request Metadata
-- Number: ${pr.number}
-- Title: ${pr.title}
-- Author: ${pr.author}
-- description: ${pr.description}
+ - Number: ${pr.number}
+ - Title: ${pr.title}
+ - Author: ${pr.author}
+ - description: ${pr.description}
+ - State: ${meta?.state ?? 'N/A'}
+ - Merged: ${meta?.merged ? 'Yes' : 'No'}
+ - Review Comments: ${meta?.comments?.length ?? 0}
 
 ## Pull Request Diff (shortened)
 \`\`\`diff
 ${diff.slice(0, 3000)}
 \`\`\`
 
-### Please generate a Marp slide deck in Markdown format.
-- Use headings for each slide (e.g., #, ##)
-- Use slide breaks (---) between slides
-- Start with a title slide
-- Include slides for: motivation, implementation, summary
-- If no clear background or purpose is provided in the description, ask the author to clarify their intent. If any URLs (like issues or tickets) are included, refer to them.
-- When showing code changes, include comments on the slide if any part of the diff is unclear, hard to read, or potentially suboptimal.
-- Use code snippets (in diff or js format) where appropriate
-- Write in Japanese.
-- Output the slide content directly as Markdown. Do not wrap the entire response in a code block
-- Do not end the final slide with a slide break like '---'
-- Include the Marp frontmatter header at the top: 
+${meta?.comments?.length
+  ? `## Review Comments
+${meta.comments
+  .slice(0, 3)
+  .map((c: any) => `- ${c.user?.login}: ${c.body?.slice(0, 200)}`)
+  .join('\n')}
+`
+  : ''
+}
 
-\`\`\`
 ---
 marp: true
+theme: default
+header: 'produced by pr2slide'
+footer: ''
+paginate: true
+size: 16:9
+style: |
+  section {
+    font-size: 28px;
+  }
 ---
+
+### Please generate a Marp slide deck in Markdown format.
+
+- Use headings for each slide (e.g., \`#\`, \`##\`)
+- Use slide breaks (\`---\`) between slides (**except after the final slide**)
+- Write all slide content in **Japanese**
+- Output slides directly as Markdown (do **not** wrap the entire output in a code block)
+
+---
+
+### Slide Structure and Rules
+
+#### 1. Title Slide
+- Include: Repository name (linked), PR title (linked), author name, and creation date.
+
+Example:
+\`\`\`markdown
+# PR: Add percentile configuration to Locust
+
+Repository: [org/repository](url)  
+Author: Someone
+Date: YYYY-MM-DD
 \`\`\`
+
+---
+
+#### 2. Context and Motivation
+- Describe the background and necessity of this PR.
+- Include an "About <repo>" slide if helpful, using information from the README.
+- Include:
+  - Limitations or constraints in the existing system
+  - How they impacted users or dev workflow
+  - Why it was timely to fix them
+- If project management tickets (e.g., Jira, Linear) are referenced, include their URLs.
+- If any GitHub Issues are referenced, link them like \`[Issue #123](url)\`.
+- If the PR lacks motivation or purpose, include this message directly on this slide: 'Could you please explain in more detail the purpose of this change?'
+
+Example:
+\`\`\`markdown
+## Context and Motivation
+
+describe the context and motivation in detail
+
+Related: [Issue #xxxx](url)  
+Ticket: [Ticket #xxxx](url)
+\`\`\`
+
+---
+
+#### 3. Problem and Approach
+- State the problems this PR aims to solve.
+- Describe the chosen approach and its rationale.
+
+Example:
+\`\`\`markdown
+## Problem and Approach
+
+**Problem:** describe the problem in detail
+**Approach:** describe the approach in detail
+\`\`\`
+
+---
+
+#### 4. Implementation and Code Changes
+- Generate **one slide per diff**.
+- For each diff, include:
+  - The code in \`diff\` or \`js\` format
+  - A brief explanation of the change
+  - Suggested comments if anything is unclear, surprising, or can be improved
+
+Example:
+\`\`\`markdown
+## Code Change: Add config variable
+
+\`\`\`diff
++xxxx
+\`\`\`
+
+describe the change in detail
+→ explain why this change is needed
+\`\`\`
+
+---
+
+#### 5. Technologies Used (Optional)
+- Summarize frameworks, libraries, or tools introduced or modified in this PR.
+
+Example:
+\`\`\`markdown
+## Technologies Used
+
+- Language
+- Framework
+- Library
+- API
+\`\`\`
+
+---
+
+#### 7. Review Feedback and Author Responses (**Only if PR is merged**)
+- One slide per reviewer
+- Highlight notable praise, especially if given after a revision
+- Summarize key review points
+
+Example:
+\`\`\`markdown
+## Reviewer: @testuser1
+
+💬 "Great improvement after your changes!"  
+- Suggested renaming \`foo\` to \`bar\` (done)
+- Requested doc update (done)
+\`\`\`
+
+---
+
+#### 8. Timeline So Far
+- Outline the progress from PR creation to now.
+- Include stages like draft, review, feedback, fixes, etc.
+
+Example:
+\`\`\`markdown
+## Timeline So Far
+
+- YYYY-MM-20: PR created  
+- YYYY-MM-21: Initial review  
+- YYYY-MM-22: Refactor completed  
+- YYYY-MM-23: Approval pending
+\`\`\`
+
+---
+
+#### 9. Summary: Achievements (**Only if PR is merged**)
+- Recap improvements made and impact on the product or team.
+
+Example:
+\`\`\`markdown
+## Summary: Achievements
+
+- describe the improvements made
+\`\`\`
+
+---
+
+#### 10. Summary: Future Outlook (**Only if PR is merged**)
+- Summarize proposed follow-ups, TODOs, or refactoring ideas.
+
+Example:
+\`\`\`markdown
+## Summary: Future Outlook
+
+- describe the future outlook
+\`\`\`
+
 `.trim();
 
   const config = vscode.workspace.getConfiguration('pr2slide');
