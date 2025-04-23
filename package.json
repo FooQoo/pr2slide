@@ -48,6 +48,24 @@
           "description": "Custom base URL for GitHub API (e.g., for GitHub Enterprise)"
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pr2slide",
+          "title": "PR2Slide",
+          "icon": "images/icon-sidebar.png"
+        }
+      ]
+    },
+    "views": {
+      "pr2slide": [
+        {
+          "id": "prListView",
+          "name": "Pull Requests",
+          "icon": "images/icon-sidebar.png"
+        }
+      ]
     }
   },
   "scripts": {
