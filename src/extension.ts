@@ -1,10 +1,15 @@
 import * as vscode from 'vscode';
+import * as cp from 'child_process';
+import * as util from 'util';
+
+const exec = util.promisify(cp.exec);
+
 interface PRQuickPickItem {
   label: string;
   pr?: any;
   loadMore?: boolean;
 }
-import { getPullRequests, getPullRequestDiff, getRepositoryReadme } from './github';
+import { getPullRequests,getRepositoryReadme, getPullRequestDetails } from './github';
 import { generateMarpFromPR } from './openai';
 
 async function generateSlideFrom(pr: any, context: vscode.ExtensionContext) {
@@ -39,12 +44,12 @@ async function generateSlideFrom(pr: any, context: vscode.ExtensionContext) {
     title: "Generating Slides",
     cancellable: false
   }, async (progress) => {
-    progress.report({ message: "Fetching pull request diff..." });
-    const diff = await getPullRequestDiff(repo, pr.number, token);
+    progress.report({ message: "Fetching pull request details..." });
+    const { diff, state, merged, comments, createdAt, commits } = await getPullRequestDetails(repo, pr.number, token);
     progress.report({ message: "Fetching repository README..." });
     const readme = await getRepositoryReadme(repo, token);
     progress.report({ message: "Generating slides..." });
-    const markdown = await generateMarpFromPR(pr, diff, readme, openaiToken);
+    const markdown = await generateMarpFromPR(pr, diff, readme, openaiToken, 'gpt-4o', { state, merged, comments, createdAt, commits });
 
     const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: markdown });
     await vscode.window.showTextDocument(doc);
@@ -176,8 +181,7 @@ async function detectRepo(): Promise<string | undefined> {
       if (match?.[1]) {return match[1];}
     }
   }
-
-  vscode.window.showWarningMessage(`Could not detect GitHub repository. Make sure a Git remote points to a valid GitHub repository.`);
+  
   return undefined;
 }
 
@@ -195,10 +199,20 @@ class PRListProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
     return element;
   }
 
-  async getChildren(): Promise<vscode.TreeItem[]> {
-    if (!this.context) {
-      return [];
+  async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
+    if (!element) {
+      return [
+        new vscode.TreeItem('Open Pull Requests', vscode.TreeItemCollapsibleState.Collapsed),
+        new vscode.TreeItem('Closed Pull Requests', vscode.TreeItemCollapsibleState.Collapsed),
+      ];
     }
+
+    const state = element.label === 'Open Pull Requests' ? 'open' : 'closed';
+
+    const gitExtension = vscode.extensions.getExtension('vscode.git');
+    await gitExtension?.activate();
+
+    if (!this.context) return [];
 
     let token = await getSecret(this.context, 'pr2slide.githubToken');
     if (!token) {
@@ -223,7 +237,12 @@ class PRListProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
       return [];
     }
 
-    const prs = await getPullRequests(repo, token, 1);
+    const prs = await getPullRequests(repo, token, 1, state);
+
+    if (prs.length === 0) {
+      vscode.window.showInformationMessage(`No ${state} pull requests found.`);
+      return [];
+    }
 
     return prs.map((pr: any) => {
       const item = new vscode.TreeItem(`#${pr.number}: ${pr.title}`, vscode.TreeItemCollapsibleState.None);
