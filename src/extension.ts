@@ -32,7 +32,7 @@ async function generateSlideFrom(pr: any, context: vscode.ExtensionContext) {
   }
 
   const repo = await detectRepo();
-  if (!repo) return;
+  if (!repo) {return;}
 
   await vscode.window.withProgress({
     location: vscode.ProgressLocation.Window,
