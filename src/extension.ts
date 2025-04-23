@@ -155,21 +155,30 @@ export function activate(context: vscode.ExtensionContext) {
 async function detectRepo(): Promise<string | undefined> {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
+    vscode.window.showWarningMessage('No workspace folder is open.');
     return undefined;
   }
 
-  const uri = folders[0].uri;
   const gitExtension = vscode.extensions.getExtension('vscode.git');
-  await gitExtension?.activate(); // Ensure activation
+  await gitExtension?.activate();
 
   const api = gitExtension?.exports?.getAPI(1);
-  const repo = api?.repositories?.[0]?.state?.remotes?.[0]?.fetchUrl;
-  if (!repo) {
-    return undefined;
+  const repositories = api?.repositories ?? [];
+
+  const pattern = /[:\/]([^\/:]+\/[^\/]+?)(?:\.git)?$/;
+
+  for (const repo of repositories) {
+    for (const remote of repo.state.remotes) {
+      const url = remote.fetchUrl || remote.pushUrl;
+      if (!url) {continue;}
+
+      const match = url.match(pattern);
+      if (match?.[1]) {return match[1];}
+    }
   }
 
-  const match = repo.match(/github.com[/:](.+?)(\.git)?$/);
-  return match?.[1];
+  vscode.window.showWarningMessage(`Could not detect GitHub repository. Make sure a Git remote points to a valid GitHub repository.`);
+  return undefined;
 }
 
 async function getSecret(context: vscode.ExtensionContext, key: string): Promise<string | undefined> {

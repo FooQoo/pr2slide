@@ -31,10 +31,12 @@ ${diff.slice(0, 3000)}
 - Use slide breaks (---) between slides
 - Start with a title slide
 - Include slides for: motivation, implementation, summary
+- If no clear background or purpose is provided in the description, ask the author to clarify their intent. If any URLs (like issues or tickets) are included, refer to them.
+- When showing code changes, include comments on the slide if any part of the diff is unclear, hard to read, or potentially suboptimal.
 - Use code snippets (in diff or js format) where appropriate
 - Write in Japanese.
 - Output the slide content directly as Markdown. Do not wrap the entire response in a code block
-- Do not end the final slide with a slide break like \'---\'
+- Do not end the final slide with a slide break like '---'
 - Include the Marp frontmatter header at the top: 
 
 \`\`\`
