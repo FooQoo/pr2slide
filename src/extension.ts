@@ -9,7 +9,7 @@ interface PRQuickPickItem {
   pr?: any;
   loadMore?: boolean;
 }
-import { getPullRequests,getRepositoryReadme, getPullRequestDetails } from './github';
+import { getPullRequests,getRepositoryReadme, getPullRequestDetails, searchPullRequests } from './github';
 import { generateMarpFromPR } from './openai';
 
 async function generateSlideFrom(pr: any, context: vscode.ExtensionContext) {
@@ -98,6 +98,37 @@ export function activate(context: vscode.ExtensionContext) {
           quickPick.hide();
         }
       }
+    });
+
+    quickPick.onDidAccept(() => {
+      quickPick.hide();
+    });
+
+    let currentSearchToken: AbortController | null = null;
+
+    let searchTimeout: NodeJS.Timeout | null = null;
+
+    quickPick.onDidChangeValue(async (value) => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+
+      searchTimeout = setTimeout(async () => {
+        if (value.trim().length > 0) {
+          if (currentSearchToken) {
+            currentSearchToken.abort();
+          }
+
+          currentSearchToken = new AbortController();
+          quickPick.busy = true;
+          const searchResults = await searchPullRequests(repo, token, value, currentSearchToken.signal);
+          quickPick.items = searchResults.map((pr) => ({ label: `#${pr.number}: ${pr.title}`, pr } as PRQuickPickItem));
+          quickPick.busy = false;
+          currentSearchToken = null;
+        } else {
+          await loadPRs();
+        }
+      }, 300);
     });
 
     const loadPRs = async () => {
