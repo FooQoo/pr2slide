@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { PullRequest } from "./github";
+import { json } from 'stream/consumers';
 
 export async function generateMarpFromPR(
   pr: PullRequest,
@@ -233,26 +234,28 @@ Example:
   const config = vscode.workspace.getConfiguration('pr2slide');
   const apiBase = config.get<string>('openaiBaseUrl') || 'https://api.openai.com';
 
-  const response = await fetch(`${apiBase}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: 'You are a Marp slide generation assistant.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.5,
-    }),
-  });
+  // テストするのでコメントアウトする
+  // const response = await fetch(`${apiBase}/v1/chat/completions`, {
+  //   method: 'POST',
+  //   headers: {
+  //     'Authorization': `Bearer ${token}`,
+  //     'Content-Type': 'application/json',
+  //   },
+  //   body: JSON.stringify({
+  //     model,
+  //     messages: [
+  //       { role: 'system', content: 'You are a Marp slide generation assistant.' },
+  //       { role: 'user', content: prompt },
+  //     ],
+  //     temperature: 0.5,
+  //   }),
+  // });
 
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status} ${response.statusText} ${await response.text()}`);
-  }
+  // if (!response.ok) {
+  //   throw new Error(`OpenAI API error: ${response.status} ${response.statusText} ${await response.text()}`);
+  // }
 
-  const data: any = await response.json();
-  return data.choices?.[0]?.message?.content ?? '';
+  // const data: any = await response.json();
+  // return data.choices?.[0]?.message?.content ?? '';
+  return '# Sample Markdown Slide Deck';
 }

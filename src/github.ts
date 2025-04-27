@@ -68,7 +68,6 @@ export async function getRepositoryReadme(repo: string, token: string): Promise<
   return await response.text();
 }
 
-
 export async function getPullRequestDetails(
   repo: string,
   prNumber: number,
@@ -136,4 +135,29 @@ export async function getPullRequestDetails(
     createdAt,
     commits,
   };
+}
+
+export async function searchPullRequests(repo: string, token: string, query: string, signal?: AbortSignal): Promise<PullRequest[]> {
+  const config = vscode.workspace.getConfiguration('pr2slide');
+  const githubBase = config.get<string>('githubApiBaseUrl') || 'https://api.github.com';
+
+  const response = await fetch(`${githubBase}/search/issues?q=${encodeURIComponent(query)}+repo:${repo}+type:pr`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+    },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub API error (search): ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.items.map((pr: any) => ({
+    number: pr.number,
+    title: pr.title,
+    description: pr.body ?? '',
+    author: pr.user?.login ?? 'unknown',
+  }));
 }
